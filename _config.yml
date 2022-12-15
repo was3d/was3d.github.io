@@ -103,4 +103,4 @@ theme: pure
 deploy:
   type: git
   repository: https://github.com/was3d/was3d.github.io
-  branch: master
+  branch: main

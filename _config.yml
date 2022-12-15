@@ -102,7 +102,5 @@ theme: pure
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: git
-  repository: https://github.com/Alex030502/wased.github.io.git
+  repository: https://github.com/was3d/was3d.github.io
   branch: master
-##https://github.com/Alex030502/wased.github.io.git
-##https://Alex030502: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@github.com/Alex030502/wased.github.io.git

